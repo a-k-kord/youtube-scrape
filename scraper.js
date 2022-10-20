@@ -1,16 +1,17 @@
 const request = require('request');
+const jsonPath = require("./jsonPath");
 
-async function youtube(query, key, pageToken) {
+async function youtube(ytChannel, query, key, pageToken) {
     return new Promise((resolve, reject) => {
-        let json = { results: [], version: require('./package.json').version };
+        let json = {results: [], version: require('./package.json').version};
 
-        // Specify YouTube search url
         if (key) {
             json["parser"] = "json_format.page_token";
             json["key"] = key;
-            
+            const searchPath = ytChannel ? 'browse' : 'search';
+
             // Access YouTube search API
-            request.post(`https://www.youtube.com/youtubei/v1/search?key=${key}`, {
+            request.post(`https://www.youtube.com/youtubei/v1/${searchPath}?key=${key}`, {
                 json: {
                     context: {
                         client: {
@@ -22,14 +23,23 @@ async function youtube(query, key, pageToken) {
                 },
             }, (error, response, body) => {
                 if (!error && response.statusCode === 200) {
-                    parseJsonFormat(body.onResponseReceivedCommands[0].appendContinuationItemsAction.continuationItems, json);
+                    parseJsonFormat(body.onResponseReceivedActions[0].appendContinuationItemsAction.continuationItems, json);
                     return resolve(json);
                 }
-                resolve({ error: error });
+                resolve({error: error});
             });
-        }
-        else {
-            let url = `https://www.youtube.com/results?q=${encodeURIComponent(query)}`;
+        } else {
+            let url, dataXPath
+            if (ytChannel) {
+                const pathEnding = query ? `search?query=${encodeURIComponent(query)}` : 'videos';
+                url = `https://www.youtube.com/c/${ytChannel}/${pathEnding}`;
+                dataXPath = query
+                    ? 'contents.twoColumnBrowseResultsRenderer.tabs[6].expandableTabRenderer.content.sectionListRenderer.contents'
+                    : 'contents.twoColumnBrowseResultsRenderer.tabs[1].tabRenderer.content.sectionListRenderer.contents[0].itemSectionRenderer.contents[0].gridRenderer.items';
+            } else {
+                url = `https://www.youtube.com/results?q=${encodeURIComponent(query)}`;
+                dataXPath = 'contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer.contents';
+            }
 
             // Access YouTube search
             request(url, (error, response, html) => {
@@ -44,26 +54,27 @@ async function youtube(query, key, pageToken) {
                         let match = html.match(/ytInitialData[^{]*(.*?);\s*<\/script>/s);
                         if (match && match.length > 1) {
                             json["parser"] += ".object_var";
-                        }
-                        else {
+                        } else {
                             json["parser"] += ".original";
                             match = html.match(/ytInitialData"[^{]*(.*);\s*window\["ytInitialPlayerResponse"\]/s);
                         }
                         data = JSON.parse(match[1]);
-                        json["estimatedResults"] = data.estimatedResults || "0";
-                        sectionLists = data.contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer.contents;
-                    }
-                    catch(ex) {
+                        sectionLists = jsonPath(data, dataXPath);
+                    } catch (ex) {
                         console.error("Failed to parse data:", ex);
                         console.log(data);
                     }
 
+                    if(!sectionLists) {
+                        resolve({error: `No such property '${dataXPath}' in json`});
+                    }
+
                     // Loop through all objects and parse data according to type
-                    parseJsonFormat(sectionLists, json);
-        
+                    parseJsonFormat(...sectionLists, json);
+
                     return resolve(json);
                 }
-                resolve({ error: error });
+                resolve({error: error});
             });
         }
     });
@@ -83,7 +94,7 @@ function parseJsonFormat(contents, json) {
                         if (content.hasOwnProperty("channelRenderer")) {
                             json.results.push(parseChannelRenderer(content.channelRenderer));
                         }
-                        if (content.hasOwnProperty("videoRenderer")) {
+                        if (content.hasOwnProperty("videoRenderer") || content.hasOwnProperty("gridVideoRenderer")) {
                             json.results.push(parseVideoRenderer(content.videoRenderer));
                         }
                         if (content.hasOwnProperty("radioRenderer")) {
@@ -92,18 +103,17 @@ function parseJsonFormat(contents, json) {
                         if (content.hasOwnProperty("playlistRenderer")) {
                             json.results.push(parsePlaylistRenderer(content.playlistRenderer));
                         }
-                    }
-                    catch(ex) {
+                    } catch (ex) {
                         console.error("Failed to parse renderer:", ex);
                         console.log(content);
                     }
                 });
-            }
-            else if (sectionList.hasOwnProperty("continuationItemRenderer")) {
+            } else if (sectionList.hasOwnProperty("continuationItemRenderer")) {
                 json["nextPageToken"] = sectionList.continuationItemRenderer.continuationEndpoint.continuationCommand.token;
+            } else if (sectionList.hasOwnProperty("gridVideoRenderer")) {
+                json.results.push(parseVideoRenderer(sectionList.gridVideoRenderer));
             }
-        }
-        catch (ex) {
+        } catch (ex) {
             console.error("Failed to read contents for section list:", ex);
             console.log(sectionList);
         }
@@ -125,11 +135,11 @@ function parseChannelRenderer(renderer) {
         "video_count": renderer.videoCountText ? renderer.videoCountText.runs.reduce(comb, "") : "",
         "subscriber_count": renderer.subscriberCountText ? renderer.subscriberCountText.simpleText : "0 subscribers",
         "verified": renderer.ownerBadges &&
-                    renderer.ownerBadges.some(badge => badge.metadataBadgeRenderer.style.indexOf("VERIFIED") > -1) || 
-                    false
+            renderer.ownerBadges.some(badge => badge.metadataBadgeRenderer.style.indexOf("VERIFIED") > -1) ||
+            false
     };
 
-    return { channel };
+    return {channel};
 }
 
 /**
@@ -152,7 +162,7 @@ function parsePlaylistRenderer(renderer) {
         "url": `https://www.youtube.com${renderer.shortBylineText.runs[0].navigationEndpoint.commandMetadata.webCommandMetadata.url}`
     };
 
-    return { playlist: playlist, uploader: uploader };
+    return {playlist: playlist, uploader: uploader};
 }
 
 /**
@@ -173,7 +183,7 @@ function parseRadioRenderer(renderer) {
         "username": renderer.shortBylineText ? renderer.shortBylineText.simpleText : "YouTube"
     };
 
-    return { radio: radio, uploader: uploader };
+    return {radio: radio, uploader: uploader};
 }
 
 /**
@@ -188,8 +198,8 @@ function parseVideoRenderer(renderer) {
         "url": `https://www.youtube.com${renderer.navigationEndpoint.commandMetadata.webCommandMetadata.url}`,
         "duration": renderer.lengthText ? renderer.lengthText.simpleText : "Live",
         "snippet": renderer.descriptionSnippet ?
-                   renderer.descriptionSnippet.runs.reduce((a, b) => a + (b.bold ? `<b>${b.text}</b>` : b.text), ""):
-                   "",
+            renderer.descriptionSnippet.runs.reduce((a, b) => a + (b.bold ? `<b>${b.text}</b>` : b.text), "") :
+            "",
         "upload_date": renderer.publishedTimeText ? renderer.publishedTimeText.simpleText : "Live",
         "thumbnail_src": renderer.thumbnail.thumbnails[renderer.thumbnail.thumbnails.length - 1].url,
         "views": renderer.viewCountText ?
@@ -198,14 +208,12 @@ function parseVideoRenderer(renderer) {
     };
 
     let uploader = {
-        "username": renderer.ownerText.runs[0].text,
-        "url": `https://www.youtube.com${renderer.ownerText.runs[0].navigationEndpoint.commandMetadata.webCommandMetadata.url}`
+        "username": renderer.ownerText?.runs[0]?.text,
+        "url": `https://www.youtube.com${renderer.ownerText?.runs[0].navigationEndpoint.commandMetadata.webCommandMetadata.url}`
     };
-    uploader.verified = renderer.ownerBadges &&
-        renderer.ownerBadges.some(badge => badge.metadataBadgeRenderer.style.indexOf("VERIFIED") > -1) || 
-        false;
+    uploader.verified = renderer.ownerBadges?.some(badge => badge.metadataBadgeRenderer.style.indexOf("VERIFIED") > -1) || false;
 
-    return { video: video, uploader: uploader };
+    return {video: video, uploader: uploader};
 }
 
 /**
