@@ -1,13 +1,15 @@
 const express = require('express');
 const cors = require('cors')
+const path = require('path');
 const scraper = require('./scraper')
 const app = express();
 
 app.use(cors());
-
+// Your static pre-build assets folder
+app.use(express.static(path.join(__dirname, '..', 'build')));
 //Home page
-app.get('/', (req, res) => {
-    res.sendFile(__dirname + "/index.html");
+app.get('/', function(req,res){
+    res.sendFile(path.join(__dirname, '..', 'build'));
 });
 
 //API route
