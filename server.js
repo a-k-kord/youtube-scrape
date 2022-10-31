@@ -6,10 +6,10 @@ const app = express();
 
 app.use(cors());
 // Your static pre-build assets folder
-app.use(express.static(path.join(__dirname, '..', 'build')));
+app.use(express.static(path.join(__dirname, 'build')));
 //Home page
 app.get('/', function(req,res){
-    res.sendFile(path.join(__dirname, '..', 'build'));
+    res.sendFile(path.join(__dirname, 'build'));
 });
 
 //API route
