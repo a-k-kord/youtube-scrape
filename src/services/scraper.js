@@ -1,9 +1,9 @@
-const request = require('request');
-const jsonPath = require("./jsonPath");
+import axios from 'axios';
+import {jsonPath} from "../utils/jsonPath";
 
-async function youtube(ytChannel, query, key, pageToken) {
+export const youtubeScraper = async (ytChannel, query, key, pageToken) => {
     return new Promise((resolve, reject) => {
-        let json = {results: [], version: require('./package.json').version};
+        let json = {results: [], version: '1.0'};
 
         if (key) {
             json["parser"] = "json_format.page_token";
@@ -11,7 +11,7 @@ async function youtube(ytChannel, query, key, pageToken) {
             const searchPath = ytChannel ? 'browse' : 'search';
 
             // Access YouTube search API
-            request.post(`https://www.youtube.com/youtubei/v1/${searchPath}?key=${key}`, {
+            axios.post(`https://www.youtube.com/youtubei/v1/${searchPath}?key=${key}`, {
                 json: {
                     context: {
                         client: {
@@ -21,28 +21,38 @@ async function youtube(ytChannel, query, key, pageToken) {
                     },
                     continuation: pageToken
                 },
-            }, (error, response, body) => {
-                if (!error && response.statusCode === 200) {
-                    parseJsonFormat(body.onResponseReceivedActions[0].appendContinuationItemsAction.continuationItems, json);
+            }, {
+                withCredentials: false,
+                responseType: 'json',
+            }).then((response) => {
+                if (response.status === 200) {
+                    parseJsonFormat(response.data.onResponseReceivedActions[0].appendContinuationItemsAction.continuationItems, json);
                     return resolve(json);
                 }
+            }).catch((error) => {
+                //TODO
                 resolve({error: error});
+                console.error(error);
             });
-        } else {
-            let url, dataXPath;
+        }
+        else {
+            let url, dataXPath
             if (ytChannel) {
                 const pathEnding = query ? `search?query=${encodeURIComponent(query)}` : 'videos';
                 url = `https://www.youtube.com/c/${ytChannel}/${pathEnding}`;
-                dataXPath = 'contents.twoColumnBrowseResultsRenderer.tabs'
+                dataXPath = query
+                    ? 'contents.twoColumnBrowseResultsRenderer.tabs[6].expandableTabRenderer.content.sectionListRenderer.contents'
+                    : 'contents.twoColumnBrowseResultsRenderer.tabs[1].tabRenderer.content.sectionListRenderer.contents[0].itemSectionRenderer.contents[0].gridRenderer.items';
             } else {
                 url = `https://www.youtube.com/results?q=${encodeURIComponent(query)}`;
                 dataXPath = 'contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer.contents';
             }
 
             // Access YouTube search
-            request(url, (error, response, html) => {
+            axios.get(url).then((response) => {
                 // Check for errors
-                if (!error && response.statusCode === 200) {
+                if (response.status === 200) {
+                    const html = response.data;
                     json["parser"] = "json_format";
                     json["key"] = html.match(/"innertubeApiKey":"([^"]*)/)[1];
 
@@ -57,46 +67,24 @@ async function youtube(ytChannel, query, key, pageToken) {
                             match = html.match(/ytInitialData"[^{]*(.*);\s*window\["ytInitialPlayerResponse"\]/s);
                         }
                         data = JSON.parse(match[1]);
-                        if (ytChannel) {
-                            const [tabs] = jsonPath(data, dataXPath);
-                            if (!tabs) {
-                                return resolve({error: `No such property '${dataXPath}' in json`});
-                            }
-                            if(query) {
-                                sectionLists = jsonPath(tabs[tabs.length - 1], 'expandableTabRenderer.content.sectionListRenderer.contents');
-                                dataXPath += `[${tabs.length - 1}].expandableTabRenderer.content.sectionListRenderer.contents`;
-                            } else {
-                                const [tabRendererContent] = jsonPath(tabs[1], 'tabRenderer.content');
-                                dataXPath += '[1].tabRenderer.content.';
-                                const [[currentRendererName, currentRendererValue]]  = Object.entries(tabRendererContent);
-                                if(currentRendererName === 'sectionListRenderer') {
-                                    sectionLists = jsonPath(currentRendererValue, 'contents[0].itemSectionRenderer.contents[0].gridRenderer.items');
-                                    dataXPath += 'sectionListRenderer.contents[0].itemSectionRenderer.contents[0].gridRenderer.items';
-                                } else if(currentRendererName === 'richGridRenderer') {
-                                    sectionLists = jsonPath(currentRendererValue, 'contents');
-                                    dataXPath += 'richGridRenderer.contents';
-                                }
-                            }
-                        } else {
-                            sectionLists = jsonPath(data, dataXPath);
-                        }
+                        sectionLists = jsonPath(data, dataXPath);
                     } catch (ex) {
                         console.error("Failed to parse data:", ex);
                         console.log(data);
                     }
 
-                    if (!sectionLists) {
-                        return resolve({error: `No such property '${dataXPath}' in json`});
+                    if(!sectionLists) {
+                        resolve({error: `No such property '${dataXPath}' in json`});
                     }
 
                     // Loop through all objects and parse data according to type
                     parseJsonFormat(...sectionLists, json);
-                    [json.channelImg] = jsonPath(data, 'metadata.channelMetadataRenderer.avatar.thumbnails[0].url') || [null];
-                    [json.channelTitle] = jsonPath(data, 'metadata.channelMetadataRenderer.title') || [''];
 
                     return resolve(json);
                 }
-                resolve({error: error});
+                resolve({error: `Status code is not OK! GET '${url}' status: ${response.statusText}`});
+            }).catch((error) => {
+                resolve({error: `Failed to GET '${url}': ${error}`});
             });
         }
     });
@@ -134,8 +122,6 @@ function parseJsonFormat(contents, json) {
                 json["nextPageToken"] = sectionList.continuationItemRenderer.continuationEndpoint.continuationCommand.token;
             } else if (sectionList.hasOwnProperty("gridVideoRenderer")) {
                 json.results.push(parseVideoRenderer(sectionList.gridVideoRenderer));
-            } else if (sectionList.hasOwnProperty("richItemRenderer")) {
-                json.results.push(parseVideoRenderer(sectionList.richItemRenderer.content.videoRenderer));
             }
         } catch (ex) {
             console.error("Failed to read contents for section list:", ex);
@@ -250,6 +236,3 @@ function parseVideoRenderer(renderer) {
 function comb(a, b) {
     return a + b.text;
 }
-
-module.exports.youtube = youtube;
-
