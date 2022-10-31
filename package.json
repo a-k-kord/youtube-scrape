@@ -6,8 +6,6 @@
     "author": "Andrey Korotayev",
     "private": true,
     "dependencies": {
-        "cors": "^2.8.5",
-        "express": "^4.18.2",
         "@emotion/react": "^11.9.3",
         "@emotion/styled": "^11.9.3",
         "@mui/icons-material": "^5.8.4",
@@ -17,17 +15,20 @@
         "@testing-library/react": "^13.1.1",
         "@testing-library/user-event": "^13.5.0",
         "axios": "^0.27.2",
+        "cors": "^2.8.5",
+        "express": "^4.18.2",
         "firebase": "^9.9.0",
+        "path": "^0.12.7",
         "react": "^18.0.0",
         "react-dom": "^18.0.0",
         "react-redux": "^8.0.2",
         "react-router-dom": "^6.3.0",
         "react-scripts": "5.0.1",
         "redux-persist": "^6.0.0",
+        "request": "^2.88.2",
         "styled-components": "^5.3.5",
         "timeago.js": "^4.0.2",
-        "web-vitals": "^2.1.4",
-        "request": "^2.88.2"
+        "web-vitals": "^2.1.4"
     },
     "scripts": {
         "start": "react-scripts start",
