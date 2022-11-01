@@ -17,7 +17,8 @@ const Main = styled.div`
   background-color: ${({ theme }) => theme.bg};
 `;
 const Wrapper = styled.div`
-  padding: 22px 96px;
+  padding: 30px 96px;
+  height: 100vh;
 `;
 
 function App() {

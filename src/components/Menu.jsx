@@ -18,10 +18,11 @@ import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
 import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
 import SettingsBrightnessOutlinedIcon from "@mui/icons-material/SettingsBrightnessOutlined";
-import {Link, useLocation} from "react-router-dom";
-import {useSelector} from "react-redux";
+import {Link, useLocation, useNavigate} from "react-router-dom";
+import {useDispatch, useSelector} from "react-redux";
 import Popup from "./Popup";
 import {useLocalStorage} from "../hooks/useLocalStorage";
+import {setSearchQuery} from "../redux/channelSlice";
 
 const Container = styled.div`
   flex: 1;
@@ -100,13 +101,14 @@ const Menu = ({darkMode, setDarkMode}) => {
     const handlePopupOpen = (chName) => {
         SetCurrentChName(chName);
         setOpen(true);
+
     }
 
     return (
         <>
             <Container>
                 <Wrapper>
-                    <Link to={`/videos/${params.get('ch') ? '?ch=' + params.get('ch') : ''}`}
+                    <Link to={`/`}
                           style={{textDecoration: "none", color: "inherit"}}>
                         <Logo>
                             <Img src={AdvideoTube} />

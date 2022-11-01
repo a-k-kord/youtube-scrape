@@ -77,7 +77,7 @@ const Card = ({type, video, playlist, channel}) => {
 
     return (
         <Container type={type}>
-            <Link to={`/${playlist ? 'playlist' : 'video'}/${(video || playlist).id}`} style={{textDecoration: "none"}}>
+            <Link to={`/${playlist ? 'playlist' : 'video'}/${(video || playlist).id}?title=${encodeURI((video || playlist).title)}`} style={{textDecoration: "none"}}>
                 <Image
                     type={type}
                     src={(video || playlist).thumbnail_src}

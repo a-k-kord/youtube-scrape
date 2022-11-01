@@ -1,7 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
-  currentChannel: null,
+  searchQuery: '',
   channels: [],
   loading: false,
   error: false,
@@ -21,6 +21,9 @@ export const channelSlice = createSlice({
     fetchFailure: (state) => {
       state.loading = false;
       state.error = true;
+    },
+    setSearchQuery: (state, action) => {
+      state.searchQuery = action.payload;
     },
     setChannel: (state, action) => {
       const {oldCh, newCh} = action.payload;
@@ -64,7 +67,7 @@ export const channelSlice = createSlice({
   },
 });
 
-export const { fetchStart, fetchSuccess, fetchFailure, setChannel, removeChannel, updateChannelData } =
+export const { fetchStart, fetchSuccess, fetchFailure, setChannel, removeChannel, updateChannelData, setSearchQuery } =
   channelSlice.actions;
 
 export default channelSlice.reducer;

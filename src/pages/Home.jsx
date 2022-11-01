@@ -5,31 +5,43 @@ import axios from "axios";
 import {youtubeScraper} from "../services/scraper";
 import {useLocation} from "react-router-dom";
 import {useDispatch, useSelector} from "react-redux";
-import {fetchFailure, fetchStart, fetchSuccess, setChannel, updateChannelData} from "../redux/channelSlice";
+import {
+  fetchFailure,
+  fetchStart,
+  fetchSuccess,
+  setChannel,
+  setSearchQuery,
+  updateChannelData
+} from "../redux/channelSlice";
 // import {youtubeScraper} from "../services/scraper";
 const Container = styled.div`
   display: flex;
-  justify-content: space-between;
+  justify-content: space-around;
   flex-wrap: wrap;
 `;
+
+const serverHost = '';///http://localhost:8080';
 
 const Home = ({type, channelsProp}) => {
   const [cardList, setCardList] = useState([]);
   const [channelInfo, setChannelInfo] = useState({});
   const dispatch = useDispatch();
   const params = new URLSearchParams(useLocation().search);
-  // const searchQuery = useSelector(({query}) => query);
-  const {name: curChannelName, error, loading} = channelsProp?.channels[0] ? channelsProp.channels[0] : {};
-
-  // const [ch, SetCh] = useState(channelsProp[0]);
   const [q, SetQ] = useState(params.get('q'));
+  const searchQuery = useSelector(({channel}) => channel.searchQuery);
+
+  const {name: curChannelName, error, loading} = channelsProp?.channels[0] ? channelsProp.channels[0] : {};
+  // const [ch, SetCh] = useState(channelsProp[0]);
 
 
   useEffect(() => {
     const fetchVideos = async () => {
       if(curChannelName) {
         dispatch(fetchStart());
-        const res = await axios.get(`http://localhost:8080/api/search?ch=${curChannelName}${q ? '&q='+q : ''}`);
+        if(params.get('q') !== searchQuery) {
+          dispatch(setSearchQuery(params.get('q') || ''));
+        }
+        const res = await axios.get(`${serverHost}/api/search?ch=${curChannelName}${searchQuery ? '&q='+searchQuery : ''}`);
         if(res.data) {
           dispatch(fetchSuccess());
           const {results, channelImg, channelTitle, nextPageToken, key, error} = res.data;
@@ -55,7 +67,7 @@ const Home = ({type, channelsProp}) => {
       }
     };
     fetchVideos();
-  }, [type, dispatch, curChannelName, loading, error]);
+  }, [type, dispatch, curChannelName, loading, error, searchQuery]);
 
   return (
     <Container>

@@ -3,7 +3,7 @@ import styled from "styled-components";
 // import app from "../firebase";
 import {useLocation, useNavigate} from "react-router-dom";
 import {useDispatch, useSelector} from "react-redux";
-import {setChannel, removeChannel} from "../redux/channelSlice";
+import {setChannel, removeChannel, setSearchQuery} from "../redux/channelSlice";
 
 
 const Container = styled.div`
@@ -77,6 +77,7 @@ const Label = styled.label`
 const Popup = ({channelNameProp, setOpen}) => {
     const [chName, setChName] = useState(channelNameProp);
     const inputRef = useRef();
+    const navigate = useNavigate();
     const dispatch = useDispatch();
 
     const params = new URLSearchParams(useLocation().search);
@@ -92,6 +93,8 @@ const Popup = ({channelNameProp, setOpen}) => {
     const saveChannel = () => {
         if(channelNameProp !== inputRef.current.value) {
             dispatch(setChannel({oldCh: channelNameProp, newCh: inputRef.current.value}))
+            navigate(`/`);
+            dispatch(setSearchQuery(''));
         }
         setOpen(false)
     }

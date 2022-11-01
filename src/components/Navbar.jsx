@@ -1,11 +1,12 @@
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 import styled from "styled-components";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import VideoCallOutlinedIcon from "@mui/icons-material/VideoCallOutlined";
 import {Link, useLocation, useNavigate} from "react-router-dom";
-import {useSelector} from "react-redux";
+import {useDispatch, useSelector} from "react-redux";
 import Popup from "./Popup";
+import {setSearchQuery} from "../redux/channelSlice";
 
 const Container = styled.div`
   position: sticky;
@@ -78,11 +79,18 @@ const Avatar = styled.img`
 const Navbar = () => {
     const navigate = useNavigate()
     const params = new URLSearchParams(useLocation().search);
-    const [q, setQ] = useState(params.get('q')||'');
+    const [q, setQ] = useState('');
     const {currentUser} = useSelector((state) => state.user);
-    const {channels} = useSelector(({channel}) => channel);
+    const searchQuery = useSelector(({channel}) => channel.searchQuery) ;
+
+    const dispatch = useDispatch();
+
+    useEffect(()=>{
+        setQ(searchQuery);
+    }, [searchQuery])
 
     const handleSearch = () => {
+        dispatch(setSearchQuery(q));
         navigate(`/search?q=${q}`)
     }
 
