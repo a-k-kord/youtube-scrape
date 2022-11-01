@@ -16,7 +16,9 @@ import {
 // import {youtubeScraper} from "../services/scraper";
 const Container = styled.div`
   display: flex;
-  justify-content: space-around;
+  justify-content: start;
+  column-gap: 50px;
+  row-gap: 20px;
   flex-wrap: wrap;
 `;
 
