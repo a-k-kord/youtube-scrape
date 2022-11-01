@@ -18,7 +18,7 @@ const Main = styled.div`
 `;
 const Wrapper = styled.div`
   padding: 30px 96px;
-  height: 100vh;
+  
 `;
 
 function App() {

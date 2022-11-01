@@ -11,7 +11,9 @@ const Container = styled.div`
 const Content = styled.div`
   flex: 5;
 `;
-const VideoWrapper = styled.div``;
+const VideoWrapper = styled.div`
+  height: 100vh;
+`;
 
 const VideoFrame = styled.iframe`
   height: 100%;
@@ -31,10 +33,12 @@ const Video = () => {
   const [channel, setChannel] = useState({});
 
   return (
+      <VideoWrapper>
           <VideoFrame width="100%" height="100%"
                       title={currentVideo?.title}
                       src={`https://cdn.bazr.ru//videocontent/global/novia/ytb.html?id=${videoId}&title=${title}`}
           ></VideoFrame>
+      </VideoWrapper>
   );
 };
 

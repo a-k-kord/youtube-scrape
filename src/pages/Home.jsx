@@ -22,7 +22,7 @@ const Container = styled.div`
   flex-wrap: wrap;
 `;
 
-const serverHost = '';///http://localhost:8080';
+const serverHost = 'http://localhost:8080';
 
 const Home = ({type, channelsProp}) => {
   const [cardList, setCardList] = useState([]);
